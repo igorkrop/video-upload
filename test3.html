@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Scheduler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        main {
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, button, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .time-entry {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .time-entry button {
+            width: auto;
+            padding: 5px 10px;
+        }
+        .video-preview {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .video-preview video {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+        }
+        .suggested-times {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .suggested-times button {
+            padding: 3px 7px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .suggested-times button:hover {
+            background-color: #218838;
+        }
+        .see-more {
+            text-align: center;
+            margin-top: 10px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        .modal .modal-content {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .modal video {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+        }
+        .modal-close {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Video Scheduler</h1>
+    </header>
+    <main>
+        <div class="container">
+            <h2>Upload Video Clips</h2>
+            <form id="uploadForm">
+                <label for="videoFiles">Drag and Drop Videos:</label>
+                <input type="file" id="videoFiles" accept="video/*" multiple>
+                <div id="videoPreviewContainer" class="video-preview"></div>
+                <div class="see-more">
+                    <button type="button" id="seeMoreButton">See More</button>
+                </div>
+                <button type="submit">Upload</button>
+            </form>
+
+            <div id="videoModal" class="modal">
+                <div class="modal-content" id="modalContent"></div>
+                <button class="modal-close" id="closeModalButton">Close</button>
+            </div>
+
+            <h2>Schedule Posting Times</h2>
+            <div class="suggested-times">
+                <button type="button" class="suggested-time">10:00 AM</button>
+                <button type="button" class="suggested-time">3:00 PM</button>
+                <button type="button" class="suggested-time">7:00 PM</button>
+            </div>
+            <form id="scheduleForm">
+                <div id="timeContainer">
+                    <div class="time-entry">
+                        <select class="postingTime">
+                            <!-- Dropdown options -->
+                        </select>
+                        <button type="button" class="add-time">+</button>
+                    </div>
+                </div>
+                <button type="submit">Save Schedule</button>
+            </form>
+
+            <h2>Set Default Video Title</h2>
+            <form id="titleForm">
+                <label for="videoTitle">Default Title:</label>
+                <input type="text" id="videoTitle" placeholder="Enter default title">
+                <button type="submit">Save Title</button>
+            </form>
+
+            <h2>YouTube Integration</h2>
+            <button id="connectYouTube">Connect YouTube Channel</button>
+        </div>
+    </main>
+
+    <script>
+        // Populate dropdown options with times
+        function populateDropdown(dropdown) {
+            for (let hour = 1; hour <= 23; hour++) {
+                const time = hour.toString().padStart(2, '0') + ":00";
+                const option = document.createElement('option');
+                option.value = time;
+                option.textContent = time;
+                dropdown.appendChild(option);
+            }
+        }
+
+        // Initialize dropdowns
+        document.querySelectorAll('.postingTime').forEach(populateDropdown);
+
+        // Add a new time entry
+        document.querySelector('.add-time').addEventListener('click', () => {
+            const timeContainer = document.getElementById('timeContainer');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'time-entry';
+
+            const newDropdown = document.createElement('select');
+            newDropdown.className = 'postingTime';
+            populateDropdown(newDropdown);
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.textContent = '-';
+            removeButton.addEventListener('click', () => {
+                timeContainer.removeChild(newEntry);
+            });
+
+            newEntry.appendChild(newDropdown);
+            newEntry.appendChild(removeButton);
+            timeContainer.appendChild(newEntry);
+        });
+
+        // Handle file uploads and preview
+        document.getElementById('videoFiles').addEventListener('change', (event) => {
+            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+            const seeMoreButton = document.getElementById('seeMoreButton');
+            const modalContent = document.getElementById('modalContent');
+            videoPreviewContainer.innerHTML = '';
+            modalContent.innerHTML = '';
+
+            const files = event.target.files;
+            Array.from(files).forEach((file, index) => {
+                const videoElement = document.createElement('video');
+                videoElement.controls = true;
+                videoElement.src = URL.createObjectURL(file);
+
+                if (index < 10) {
+                    videoPreviewContainer.appendChild(videoElement);
+                } else {
+                    modalContent.appendChild(videoElement);
+                }
+            });
+
+            seeMoreButton.style.display = files.length > 10 ? 'block' : 'none';
+        });
+
+        // Modal handling
+        document.getElementById('seeMoreButton').addEventListener('click', () => {
+            document.getElementById('videoModal').style.display = 'block';
+        });
+
+        document.getElementById('closeModalButton').addEventListener('click', () => {
+            document.getElementById('videoModal').style.display = 'none';
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('videoFiles');
+            const files = fileInput.files;
+            if (files.length > 0) {
+                alert(`${files.length} file(s) uploaded successfully.`);
+                fileInput.value = ""; // Clear the input field
+                document.getElementById('videoPreviewContainer').innerHTML = ''; // Clear previews
+                document.getElementById('modalContent').innerHTML = ''; // Clear modal content
+            } else {
+                alert('Please select video files to upload.');
+            }
+        });
+
+        // Save schedule form
+        document.getElementById('scheduleForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const times = Array.from(document.querySelectorAll('.postingTime')).map(dropdown => dropdown.value);
+            if (times.length > 0) {
+                alert(`Posting times saved: ${times.join(', ')}`);
+            } else {
+                alert('Please add at least one posting time.');
+            }
+        });
+
+        // Save default title
+        document.getElementById('titleForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const title = document.getElementById('videoTitle').value;
+            if (title) {
+                alert(`Default title saved: ${title}`);
+            } else {
+                alert('Please enter a title.');
+            }
+        });
+
+        // Connect YouTube mock
+        document.getElementById('connectYouTube').addEventListener('click', function() {
+            alert('YouTube channel connected! (Mock implementation)');
+        });
+
+        // Suggested times buttons
+        document.querySelectorAll('.suggested-time').forEach(button => {
+            button.addEventListener('click', () => {
+                const time = button.textContent;
+                const timeContainer = document.getElementById('timeContainer');
+                const newEntry = document.createElement('div');
+                newEntry.className = 'time-entry';
+
+                const newDropdown = document.createElement('select');
+                newDropdown.className = 'postingTime';
+                populateDropdown(newDropdown);
+                newDropdown.value = time;
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.textContent = '-';
+                removeButton.addEventListener('click', () => {
+                    timeContainer.removeChild(newEntry);
+                });
+
+                newEntry.appendChild(newDropdown);
+                newEntry.appendChild(removeButton);
+                timeContainer.appendChild(newEntry);
+            });
+        });
+    </script>
+</body>
+</html>
